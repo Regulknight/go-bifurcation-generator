@@ -12,11 +12,11 @@ import (
 	"os"
 )
 
-var addr = flag.String("addr", ":8080", "http service address")
+var addr = flag.String("addr", ":8083", "http service address")
 
 func serveHome(w http.ResponseWriter, r *http.Request) {
 	log.Println(r.URL)
-	if r.URL.Path != "/" {
+	if r.URL.Path != "/ws_check" {
 		http.Error(w, "Not found", http.StatusNotFound)
 		return
 	}
@@ -27,7 +27,7 @@ func serveHome(w http.ResponseWriter, r *http.Request) {
 	http.ServeFile(w, r, "home.html")
 }
 
-func broadcast_message(reader *bufio.Reader, hub *Hub) {
+func broadcastMessage(reader *bufio.Reader, hub *Hub) {
 	for {
 		message, err := reader.ReadBytes('\n')
 
@@ -50,7 +50,7 @@ func main() {
 	go hub.run()
 	
 	reader := bufio.NewReader(os.Stdin)
-	go broadcast_message(reader, hub)
+	go broadcastMessage(reader, hub)
 
 
 	http.HandleFunc("/", serveHome)

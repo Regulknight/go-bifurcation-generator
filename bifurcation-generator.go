@@ -1,54 +1,80 @@
 package main
 
-import (
-	"fmt"
-	"time"
-	"math"
-	"encoding/json"
-)
+import "fmt"
+import "math"
 
-type calculation_slice struct {
-	Start_x float64
-	Start_time time.Time
-	Current_x float64
-	R float64
-	Iteration_counter int
-	Tfs time.Duration
-	Cycle []float64
-	Cycle_list []float64
+func getNextBifurcationValue(x, r float64) float64 {
+    return r * x * (1 - x)
 }
 
-const rounding_error_limit float64 = 0.01
-const cycle_accept_criteria int = 5
-const cycle_maximum_size int = 10000
+func bifurcationFunctionGenerator(x0, r  float64) <- chan float64 {
+    out := make(chan float64)
 
+    x := x0
+    go func() {
+        for {
+            x = getNextBifurcationValue(x, r)
+            out <- x
+        }
+    }()
 
-func get_next_x(f func (float64, float64) float64, current_x, r float64) float64 {
-    return f(current_x, r)
+    return out 
 }
 
+const cycleAcceptCriteria int = 5
+const cycleMaximumSize int = 10000
 
-func basic_generator(current_x, r float64) float64 {
-    return current_x * r * (1 - current_x)
-}
-
-
-func is_it_equals(first_value, second_value float64) bool {
+func generateArrayStates(valueGenerator <- chan float64) <- chan []float64 {
+    out := make (chan []float64)
     
-    value := math.Pow(math.Abs((math.Pow(first_value, 2.0) - math.Pow(second_value, 2.0))), 1.0/2.0)
+    const bufferSize = cycleAcceptCriteria * cycleMaximumSize
+    arrayState := [bufferSize]float64{}
 
-    return value < rounding_error_limit
+    go func() {
+        for i := 0; i < bufferSize; i++ {
+            currentValue := <- valueGenerator
+            arrayState[i] = currentValue
+            out <- arrayState[:i]
+        }
+
+        close(out)
+    }()
+
+    return out
 }
 
-func is_equals_arrays(first_array, second_array []float64) bool {
-    
-    if len(first_array) != len(second_array) {
+const roundingErrorLimit float64 = 0.01
+
+func isItEquals(firstValue, secondValue float64) bool {
+    return math.Pow(math.Abs((math.Pow(firstValue, 2.0) - math.Pow(secondValue, 2.0))), 1.0/2.0) < roundingErrorLimit
+}
+
+func floatComparator(firstValueChan, secondValueChan <- chan float64) <- chan bool {
+    out := make(chan bool)
+
+    go func() {
+        firstValue, firstFlag := <- firstValueChan
+        secondValue, secondFlag := <- secondValueChan
+
+        for firstFlag && secondFlag {
+            out <- isItEquals(firstValue, secondValue)
+
+            firstValue, firstFlag = <- firstValueChan
+            secondValue, secondFlag = <- secondValueChan
+        }
+        close(out)
+    }()
+
+    return out
+}
+
+func isEqualsSlices(firstSlice, secondSlice []float64) bool {
+    if len(firstSlice) != len(secondSlice) {
         return false
     }
 
-    for i := 0; i <len(first_array); i++ {
-
-        if !is_it_equals(first_array[i], second_array[i]) {
+    for i := 0; i < len(firstSlice); i++ {
+        if !isItEquals(firstSlice[i], secondSlice[i]) {
             return false
         }
     }
@@ -56,83 +82,97 @@ func is_equals_arrays(first_array, second_array []float64) bool {
     return true
 }
 
-func get_json_from_calculation_slice(calculation_slice_map *calculation_slice) string{
-	    b, err := json.Marshal(calculation_slice_map)
-    	
-    	if err != nil {
-        	fmt.Println(err)
-        	return "{}"
-    	}
-    return string(b)
+func sliceComparator(firstSliceChan, secondSliceChan <- chan []float64) <- chan bool {
+    out := make(chan bool)
+
+    firstSlice, firstFlag := <- firstSliceChan
+    secondSlice, secondFlag := <- secondSliceChan
+
+    go func() {
+        for firstFlag && secondFlag {
+            firstSlice, firstFlag = <- firstSliceChan
+            secondSlice, secondFlag = <- secondSliceChan
+
+            out <- isEqualsSlices(firstSlice, secondSlice)
+        }
+        close(out)
+    }()
+
+    return out
 }
 
-func get_cycle_values(generator func (float64, float64) float64, calculation_slice_map *calculation_slice, start_x, r float64) []float64 {
+func getSliceStaticChannel(slice []float64, count int) <- chan []float64 {
+    out := make(chan []float64)
 
-    current_x := start_x
-    calculation_slice_map.Start_x = current_x
-    calculation_slice_map.R = r
-
-    var cycle_list []float64
-    cycle_list = append(cycle_list, current_x)
-
-    iteration_counter := 0
-    for {
-        calculation_slice_map.Iteration_counter =  iteration_counter
-        calculation_slice_map.Current_x = current_x
-        calculation_slice_map.Cycle_list = cycle_list
-        
-        next_x := get_next_x(generator, current_x, r)
-        cycle_list[iteration_counter] = next_x
-
-
-        for i := 1;  i < len(cycle_list) / cycle_accept_criteria; i++ {
-            calculation_slice_map.Tfs = time.Since(calculation_slice_map.Start_time)
-
-            fmt.Println(get_json_from_calculation_slice(calculation_slice_map))
-
-            cycle := cycle_list[len(cycle_list) - i:]
-
-            place_to_cycle_search := cycle_list[len(cycle_list) - cycle_accept_criteria * i:]
-
-            calculation_slice_map.Cycle = cycle
-            
-            cycle_attempt_count := 0
-            
-            for j := 0; j < cycle_accept_criteria; j++ {
-
-                first_cycle_attempt := place_to_cycle_search[:i]
-                place_to_cycle_search = place_to_cycle_search[i:]
-                
-                if is_equals_arrays(cycle, first_cycle_attempt) {
-                    cycle_attempt_count += 1
-                    
-                    if cycle_attempt_count == cycle_accept_criteria {
-                        return cycle
-                    }
-                }
-            }
+    go func() {
+        for i := 0; i < count; i++{
+            out <- slice
         }
+        close(out)
+    }()
 
-        if len(cycle_list) > cycle_maximum_size * cycle_accept_criteria {
-            return cycle_list
+    return out
+}
+
+func getSlicerChannel(slice [] float64, sliceSize int) <- chan []float64 {
+    out := make(chan []float64)
+
+    go func() {
+        for i := 1; i <= cycleAcceptCriteria; i++ {
+            sliceStartIndex := len(slice) - i * sliceSize
+            out <- slice[sliceStartIndex: sliceStartIndex + sliceSize]
+        } 
+    }()
+
+    return out
+}
+
+func isItSubSequence(sequence, subsequence []float64) bool {
+    //Тут у нас есть простор для оптимизации и мы можем выкинуть i=0 потому что наша подпоследовательность всегда берётся как слайс из конца последовательности
+    //Но я посчитал это странным поведением для метода
+    for i := 0; i < cycleAcceptCriteria; i++ {
+        compChan := sliceComparator(getSliceStaticChannel(subsequence, cycleAcceptCriteria), getSlicerChannel(sequence, len(subsequence)))    
+
+        result := <- compChan
+
+        if !result {
+            return false
         }
-
-        current_x = next_x
-        cycle_list = append(cycle_list, current_x)
-
-        iteration_counter += 1
     }
+
+    return true
+}
+
+// Возвращает nil если в последовательности нет подпоследовательностей
+func isItContainsSubsequences(sequence []float64) []float64 {
+    for i := 1; i < len(sequence) / cycleAcceptCriteria; i++ {
+        subsequence := sequence[len(sequence) - i:]
+        result := isItSubSequence(sequence, subsequence)
+
+        if result {
+            return subsequence
+        }
+    }
+
+    return nil
 }
 
 func main() {
-	calculation_slice_map := &calculation_slice {
-	
-	}
-
-	calculation_slice_map.Start_time = time.Now()
-
-    for r := 0.0; r < 3.8; r += 0.01 {
-        get_cycle_values(basic_generator, calculation_slice_map, 0.4, r)
+    for r := 0.0; r < 3.9; r+= 0.1 {
+        out := generateArrayStates(bifurcationFunctionGenerator(0.4, r))
+    
+            calculationSlice, ok := <- out
+    
+            for ok {
+                subsequence := isItContainsSubsequences(calculationSlice)
+    
+            if subsequence != nil || len(calculationSlice) > 40000 {
+                fmt.Println(subsequence)
+                ok = false
+            } else {
+                calculationSlice, ok = <-out
+            }
+        }
     }
 
 	fmt.Println("Thats all")
