@@ -5,8 +5,6 @@
 package main
 
 import (
-	"bifurcation-generator/generator"
-	"bifurcation-generator/subsequencesearcher"
 	"bifurcation-generator/websocketserver"
 	"flag"
 	"log"
@@ -56,34 +54,6 @@ func broadcastMessage(subsequenceChan <-chan []float64, hub *websocketserver.Hub
 		}
 
 	}
-}
-
-func getBifurcationCyclesChannel() <-chan []float64 {
-	out := make(chan []float64)
-
-	go func() {
-		bifurcationGenerator := generator.DefaultBifurcationGenerator()
-
-		var bifurcationSequenceGenerator <-chan []float64
-		for r := 0.0; r < 3.9; r += 0.1 {
-			bifurcationSequenceGenerator = generator.GetSequenceGenerator(bifurcationGenerator.GetResultChannel(0.4, r))
-			calculationSlice, ok := <-bifurcationSequenceGenerator
-
-			for ok {
-				subsequence := subsequencesearcher.IsContainsSubsequences(calculationSlice)
-
-				if subsequence != nil || len(calculationSlice) > 40000 {
-					out <- subsequence
-					ok = false
-				} else {
-					calculationSlice, ok = <-bifurcationSequenceGenerator
-				}
-			}
-
-		}
-	}()
-
-	return out
 }
 
 func main() {
