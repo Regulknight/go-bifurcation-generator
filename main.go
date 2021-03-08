@@ -62,9 +62,11 @@ func getBifurcationCyclesChannel() <-chan []float64 {
 	out := make(chan []float64)
 
 	go func() {
-		bifurcationSequenceGenerator := generator.GetBifurcationSequenceGenerator(0.4, 0.0)
+		bifurcationGenerator := generator.DefaultBifurcationGenerator()
+
+		var bifurcationSequenceGenerator <-chan []float64
 		for r := 0.0; r < 3.9; r += 0.1 {
-			bifurcationSequenceGenerator = generator.GetBifurcationSequenceGenerator(0.4, r)
+			bifurcationSequenceGenerator = generator.GetSequenceGenerator(bifurcationGenerator.GetResultChannel(0.4, r))
 			calculationSlice, ok := <-bifurcationSequenceGenerator
 
 			for ok {
