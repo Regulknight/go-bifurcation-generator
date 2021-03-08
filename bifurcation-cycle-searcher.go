@@ -25,16 +25,18 @@ func getBifurcationCyclesChannel() <-chan []float64 {
 	out := make(chan []float64)
 
 	go func() {
-		sequenceChannel := <-getSequenceGeneratorChannel(iterator.NewSegmentIterator(0.0, 3.9, 0.1), generator.DefaultBifurcationGenerator())
+		sequenceGeneratorChannel := getSequenceGeneratorChannel(iterator.NewSegmentIterator(0.0, 3.9, 0.1), generator.DefaultBifurcationGenerator())
 
-		for sequence, sequenceOk := <-sequenceChannel; sequenceOk; {
-			subsequence := subsequencesearcher.IsContainsSubsequences(sequence)
+		for sequenceGenerator, sgOk := <-sequenceGeneratorChannel; sgOk; sequenceGenerator, sgOk = <-sequenceGeneratorChannel {
+			for sequence, sequenceOk := <-sequenceGenerator; sequenceOk; {
+				subsequence := subsequencesearcher.IsContainsSubsequences(sequence)
 
-			if subsequence != nil || len(sequence) > 40000 {
-				out <- subsequence
-				sequenceOk = false
-			} else {
-				sequence, sequenceOk = <-sequenceChannel
+				if subsequence != nil || len(sequence) > generator.MaximumSequenceSize {
+					out <- subsequence
+					sequenceOk = false
+				} else {
+					sequence, sequenceOk = <-sequenceGenerator
+				}
 			}
 		}
 
