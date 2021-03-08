@@ -5,18 +5,21 @@
 package main
 
 import (
+	"bifurcation-generator/bifurcation"
+	"bifurcation-generator/converter"
+	"bifurcation-generator/iterator"
+	"bifurcation-generator/searcher"
+	"bifurcation-generator/websocketserver"
 	"flag"
-	"net/http"
-	"bufio"
 	"log"
-	"os"
+	"net/http"
 )
 
-var addr = flag.String("addr", ":8080", "http service address")
+var addr = flag.String("addr", ":8083", "http service address")
 
 func serveHome(w http.ResponseWriter, r *http.Request) {
 	log.Println(r.URL)
-	if r.URL.Path != "/" {
+	if r.URL.Path != "/ws_check" {
 		http.Error(w, "Not found", http.StatusNotFound)
 		return
 	}
@@ -27,35 +30,32 @@ func serveHome(w http.ResponseWriter, r *http.Request) {
 	http.ServeFile(w, r, "home.html")
 }
 
-func broadcast_message(reader *bufio.Reader, hub *Hub) {
+func broadcastMessage(subsequenceChan <-chan []float64, hub *websocketserver.Hub) {
 	for {
-		message, err := reader.ReadBytes('\n')
-
-		if err != nil {
-			log.Println(err)
-		}
-
-		for client := range hub.clients {
+		for client := range hub.Clients {
+			byteChan := converter.GetFloatSliceConverter(subsequenceChan)
+			msg := <-byteChan
 			select {
-				case client.send <- message:
+			case client.Send <- msg:
 			}
 		}
+
 	}
 }
 
 func main() {
 	flag.Parse()
-	
-	hub := newHub()
-	go hub.run()
-	
-	reader := bufio.NewReader(os.Stdin)
-	go broadcast_message(reader, hub)
 
+	cycleSearcher := searcher.NewCycleSearcher(bifurcation.NewBifurcation(bifurcation.DefaultBifurcationFunction(), iterator.NewSegmentIterator(0.0, 3.9, 0.1), 0.4).GetBifurcationChannel())
+
+	hub := websocketserver.NewHub()
+	go hub.Run()
+
+	go broadcastMessage(cycleSearcher.GetCyclesChannel(), hub)
 
 	http.HandleFunc("/", serveHome)
 	http.HandleFunc("/ws", func(w http.ResponseWriter, r *http.Request) {
-		serveWs(hub, w, r)
+		websocketserver.ServeWs(hub, w, r)
 	})
 	err := http.ListenAndServe(*addr, nil)
 	if err != nil {
