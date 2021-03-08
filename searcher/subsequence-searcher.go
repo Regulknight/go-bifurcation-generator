@@ -27,6 +27,8 @@ func getSlicerGenerator(slice []float64, sliceSize int) <-chan []float64 {
 			sliceStartIndex := len(slice) - i*sliceSize
 			out <- slice[sliceStartIndex : sliceStartIndex+sliceSize]
 		}
+
+		close(out)
 	}()
 
 	return out

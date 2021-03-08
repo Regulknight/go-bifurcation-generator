@@ -21,6 +21,8 @@ func (iterator *SegmentIterator) GetIteratorChannel() <-chan float64 {
 		for i := iterator.start; i < iterator.stop; i += iterator.step {
 			out <- i
 		}
+
+		close(out)
 	}()
 
 	return out

@@ -5,10 +5,6 @@
 package main
 
 import (
-	"bifurcation-generator/bifurcation"
-	"bifurcation-generator/converter"
-	"bifurcation-generator/iterator"
-	"bifurcation-generator/searcher"
 	"bifurcation-generator/websocketserver"
 	"flag"
 	"log"
@@ -30,13 +26,12 @@ func serveHome(w http.ResponseWriter, r *http.Request) {
 	http.ServeFile(w, r, "home.html")
 }
 
-func broadcastMessage(subsequenceChan <-chan []float64, hub *websocketserver.Hub) {
+func broadcastMessage(calculationResultChannel <-chan *CalculationResult, hub *websocketserver.Hub) {
 	for {
 		for client := range hub.Clients {
-			byteChan := converter.GetFloatSliceConverter(subsequenceChan)
-			msg := <-byteChan
+			byteChan := ResultChannelConvertToByteArrayChannel(calculationResultChannel)
 			select {
-			case client.Send <- msg:
+			case client.Send <- <-byteChan:
 			}
 		}
 
@@ -46,12 +41,11 @@ func broadcastMessage(subsequenceChan <-chan []float64, hub *websocketserver.Hub
 func main() {
 	flag.Parse()
 
-	cycleSearcher := searcher.NewCycleSearcher(bifurcation.NewBifurcation(bifurcation.DefaultBifurcationFunction(), iterator.NewSegmentIterator(0.0, 3.9, 0.1), 0.4).GetBifurcationChannel())
-
 	hub := websocketserver.NewHub()
 	go hub.Run()
 
-	go broadcastMessage(cycleSearcher.GetCyclesChannel(), hub)
+	calculationResultChannel := getCalculationResultChannel()
+	go broadcastMessage(calculationResultChannel, hub)
 
 	http.HandleFunc("/", serveHome)
 	http.HandleFunc("/ws", func(w http.ResponseWriter, r *http.Request) {
