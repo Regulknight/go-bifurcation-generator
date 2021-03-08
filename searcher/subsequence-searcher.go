@@ -1,7 +1,7 @@
-package subsequencesearcher
+package searcher
 
 import (
-	"bifurcation-generator/subsequencesearcher/comparator"
+	"bifurcation-generator/searcher/comparator"
 )
 
 const cycleAcceptCriteria int = 5

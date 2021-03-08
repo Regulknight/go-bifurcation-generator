@@ -5,7 +5,10 @@
 package main
 
 import (
+	"bifurcation-generator/bifurcation"
 	"bifurcation-generator/converter"
+	"bifurcation-generator/iterator"
+	"bifurcation-generator/searcher"
 	"bifurcation-generator/websocketserver"
 	"flag"
 	"log"
@@ -43,10 +46,12 @@ func broadcastMessage(subsequenceChan <-chan []float64, hub *websocketserver.Hub
 func main() {
 	flag.Parse()
 
+	cycleSearcher := searcher.NewCycleSearcher(bifurcation.NewBifurcation(bifurcation.DefaultBifurcationFunction(), iterator.NewSegmentIterator(0.0, 3.9, 0.1), 0.4).GetBifurcationChannel())
+
 	hub := websocketserver.NewHub()
 	go hub.Run()
 
-	go broadcastMessage(getBifurcationCyclesChannel(), hub)
+	go broadcastMessage(cycleSearcher.GetCyclesChannel(), hub)
 
 	http.HandleFunc("/", serveHome)
 	http.HandleFunc("/ws", func(w http.ResponseWriter, r *http.Request) {
