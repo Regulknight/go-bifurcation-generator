@@ -16,7 +16,7 @@ func GetBifurcationChannel(bifurcationParams *Params) <-chan *Bifurcation {
 	go func() {
 		rChan := bifurcationParams.rIterator.GetIteratorChannel()
 
-		for r, rOk := <-rChan; rOk; r, rOk = <-rChan {
+		for r := range rChan {
 			resultChannel := bifurcationParams.function.GetResultChannel(bifurcationParams.x0, r)
 			sequenceGenerator := generator.GetSequenceGenerator(resultChannel)
 			state := &Bifurcation{

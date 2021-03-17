@@ -8,7 +8,7 @@ func isEqualsFloats(firstValue, secondValue float64) bool {
 	return math.Pow(math.Abs(math.Pow(firstValue, 2.0)-math.Pow(secondValue, 2.0)), 1.0/2.0) < roundingErrorLimit
 }
 
-func isEqualsSlices(firstSlice, secondSlice []float64) bool {
+func IsEqualsSlices(firstSlice, secondSlice []float64) bool {
 	if len(firstSlice) != len(secondSlice) {
 		return false
 	}
@@ -20,23 +20,4 @@ func isEqualsSlices(firstSlice, secondSlice []float64) bool {
 	}
 
 	return true
-}
-
-func GetSliceComparator(firstSliceChan, secondSliceChan <-chan []float64) <-chan bool {
-	out := make(chan bool)
-
-	firstSlice, firstFlag := <-firstSliceChan
-	secondSlice, secondFlag := <-secondSliceChan
-
-	go func() {
-		for firstFlag && secondFlag {
-			firstSlice, firstFlag = <-firstSliceChan
-			secondSlice, secondFlag = <-secondSliceChan
-
-			out <- isEqualsSlices(firstSlice, secondSlice)
-		}
-		close(out)
-	}()
-
-	return out
 }

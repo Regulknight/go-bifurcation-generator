@@ -2,48 +2,24 @@ package searcher
 
 import (
 	"bifurcation-generator/searcher/comparator"
+	"log"
 )
 
 const cycleAcceptCriteria int = 5
 
-func getStaticSliceGenerator(slice []float64, count int) <-chan []float64 {
-	out := make(chan []float64)
-
-	go func() {
-		for i := 0; i < count; i++ {
-			out <- slice
-		}
-		close(out)
-	}()
-
-	return out
-}
-
-func getSlicerGenerator(slice []float64, sliceSize int) <-chan []float64 {
-	out := make(chan []float64)
-
-	go func() {
-		for i := 1; i <= cycleAcceptCriteria; i++ {
-			sliceStartIndex := len(slice) - i*sliceSize
-			out <- slice[sliceStartIndex : sliceStartIndex+sliceSize]
-		}
-
-		close(out)
-	}()
-
-	return out
-}
 func isSubSequence(sequence, subsequence []float64) bool {
 	//Тут у нас есть простор для оптимизации и мы можем выкинуть i=0 потому что наша подпоследовательность всегда берётся как слайс из конца последовательности
 	//Но я посчитал это странным поведением для метода
 	for i := 0; i < cycleAcceptCriteria; i++ {
-		compChan := comparator.GetSliceComparator(getStaticSliceGenerator(subsequence, cycleAcceptCriteria), getSlicerGenerator(sequence, len(subsequence)))
+		sequenceComparePart := sequence[len(sequence)-len(subsequence):]
 
-		result := <-compChan
+		compResult := comparator.IsEqualsSlices(subsequence, sequenceComparePart)
 
-		if !result {
+		if !compResult {
 			return false
 		}
+
+		sequence = sequence[:len(sequence)-len(subsequence)]
 	}
 
 	return true
@@ -57,6 +33,21 @@ func IsContainsSubsequences(sequence []float64) []float64 {
 
 		if result {
 			return subsequence
+		}
+	}
+
+	return nil
+}
+
+func GetCycle(sequenceChan <-chan []float64) []float64 {
+	for sequence := range sequenceChan {
+		searchResult := IsContainsSubsequences(sequence)
+		if searchResult != nil {
+			return searchResult
+		}
+
+		if len(sequence)%100 == 0 {
+			log.Println(len(sequence))
 		}
 	}
 

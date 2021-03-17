@@ -31,16 +31,16 @@ func getCalculationResultChannel() <-chan *CalculationResult {
 	calculationResultChannel := make(chan *CalculationResult)
 
 	go func() {
-		bifurcationGenerator := bifurcation.GetBifurcationChannel(bifurcation.NewParams(bifurcation.DefaultRecurrentFunction(), iterator.NewSegmentIterator(0.0, 3.9, 0.01), 0.4))
+		bifurcationGenerator := bifurcation.GetBifurcationChannel(bifurcation.NewParams(bifurcation.DefaultRecurrentFunction(), iterator.NewSegmentIterator(0.0, 3.9, 0.001), 0.4))
 
 		i := 0
-		for currentBifurcation, status := <-bifurcationGenerator; status; currentBifurcation, status = <-bifurcationGenerator {
-			cycleSearcher := searcher.GetCyclesChannel(currentBifurcation.BifurcationSequenceChannel)
+		for currentBifurcation := range bifurcationGenerator {
 			startTime := time.Now().Nanosecond()
-			cycle := <-cycleSearcher
+			cycle := searcher.GetCycle(currentBifurcation.BifurcationSequenceChannel)
 			searchTime := time.Now().Nanosecond() - startTime
 
-			calculationResultChannel <- NewCalculationResult(cycle, currentBifurcation.CurrentX0, currentBifurcation.CurrentR, i, searchTime)
+			calculationResult := NewCalculationResult(cycle, currentBifurcation.CurrentX0, currentBifurcation.CurrentR, i, searchTime)
+			calculationResultChannel <- calculationResult
 			i += 1
 		}
 
@@ -64,8 +64,9 @@ func ResultChannelConvertToByteArrayChannel(resultChannel <-chan *CalculationRes
 	out := make(chan []byte)
 
 	go func() {
-		for result, status := <-resultChannel; status; result, status = <-resultChannel {
-			out <- []byte(result.convertToJSON())
+		for result := range resultChannel {
+			jsonResult := result.convertToJSON()
+			out <- []byte(jsonResult)
 		}
 
 		close(out)

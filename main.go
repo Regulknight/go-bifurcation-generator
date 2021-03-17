@@ -9,6 +9,7 @@ import (
 	"flag"
 	"log"
 	"net/http"
+	_ "net/http/pprof"
 )
 
 var addr = flag.String("addr", ":8083", "http service address")
@@ -27,14 +28,10 @@ func serveHome(w http.ResponseWriter, r *http.Request) {
 }
 
 func broadcastMessage(calculationResultChannel <-chan *CalculationResult, hub *websocketserver.Hub) {
+	byteChan := ResultChannelConvertToByteArrayChannel(calculationResultChannel)
 	for {
-		for client := range hub.Clients {
-			byteChan := ResultChannelConvertToByteArrayChannel(calculationResultChannel)
-			select {
-			case client.Send <- <-byteChan:
-			}
-		}
-
+		byteValue := <-byteChan
+		hub.Broadcast <- byteValue
 	}
 }
 
