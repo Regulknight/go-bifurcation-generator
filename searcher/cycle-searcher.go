@@ -1,7 +1,7 @@
 package searcher
 
 import (
-	"bifurcation-generator/generator"
+	"github.com/regulknight/go-bifurcation-generator/generator"
 )
 
 type CycleSearcher struct {

@@ -1,7 +1,7 @@
 package searcher
 
 import (
-	"bifurcation-generator/searcher/comparator"
+	"github.com/regulknight/go-bifurcation-generator/searcher/comparator"
 )
 
 const cycleAcceptCriteria int = 5

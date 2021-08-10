@@ -1,8 +1,8 @@
 package bifurcation
 
 import (
-	"bifurcation-generator/generator"
-	"bifurcation-generator/iterator"
+	"github.com/regulknight/go-bifurcation-generator/generator"
+	"github.com/regulknight/go-bifurcation-generator/iterator"
 )
 
 type Bifurcation struct {

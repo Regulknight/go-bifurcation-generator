@@ -1,0 +1,4 @@
+github.com/gorilla/websocket v1.4.2 h1:+/TMaTYc4QFitKJxsQ7Yye35DkWvkdLcvGKqM+x0Ufc=
+github.com/gorilla/websocket v1.4.2/go.mod h1:YR8l580nyteQvAITg2hZ9XVh4b55+EU/adAjf1fMHhE=
+github.com/regulknight/go-bifurcation-generator v0.0.0-20210308212019-ea7a2378812e h1:f69D/6/+qsMqg/RMRbogYPBgQ1GYKQC2seW+fD01F88=
+github.com/regulknight/go-bifurcation-generator v0.0.0-20210308212019-ea7a2378812e/go.mod h1:3QIsRpW3upRXGYlSSABtE6tsT84XpfcQLr3npr5WbTQ=

@@ -5,11 +5,11 @@
 package main
 
 import (
-	"bifurcation-generator/bifurcation"
-	"bifurcation-generator/converter"
-	"bifurcation-generator/iterator"
-	"bifurcation-generator/searcher"
-	"bifurcation-generator/websocketserver"
+	"github.com/regulknight/go-bifurcation-generator/bifurcation"
+	"github.com/regulknight/go-bifurcation-generator/converter"
+	"github.com/regulknight/go-bifurcation-generator/iterator"
+	"github.com/regulknight/go-bifurcation-generator/searcher"
+	"github.com/regulknight/go-bifurcation-generator/websocketserver"
 	"flag"
 	"log"
 	"net/http"

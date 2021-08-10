@@ -1,7 +1,7 @@
 package bifurcation
 
 type BifurcationFunction struct {
-	Function       func(float64, float64) float64
+	Function func(float64, float64) float64
 	FunctionAsText string
 }
 
